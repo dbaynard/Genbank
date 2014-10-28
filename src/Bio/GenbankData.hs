@@ -16,7 +16,7 @@ data Genbank = Genbank
     -- DNA/RNA/Protein
     moleculeType :: L.ByteString,
     circular :: Maybe L.ByteString,
-    division :: L.ByteString,
+    division :: Maybe L.ByteString,
     creationDate:: L.ByteString,
     definition :: L.ByteString,
     accession :: L.ByteString,

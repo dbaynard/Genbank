@@ -34,8 +34,8 @@ genParserGenbank = do
   many1 space
   circular <- optionMaybe (try (choice [string "linear",string "circular",string "LINEAR",string "CIRCULAR"]))
   many space
-  division <-  many1 noWhiteSpace
-  many1 space
+  division <- optionMaybe . choice . fmap (try . string) $ ["PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN", "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"]
+  many space
   creationDate <- many1 noEol
   newline
   definition <- genParserField "DEFINITION" "ACCESSION"
@@ -64,7 +64,7 @@ genParserGenbank = do
   origin <- many1 genParserOriginSequence
   string "//"
   newline
-  return $ Genbank (L.pack locus) (readInt length) (L.pack moleculeType) (liftM L.pack circular) (L.pack division) (L.pack creationDate) (L.pack definition) (L.pack accession) (L.pack version) (L.pack geneIdentifier) (liftM L.pack dblink) (L.pack keywords) (L.pack source)  (L.pack organism) references (liftM L.pack comment) features contig (origintoSeqData origin) 
+  return $ Genbank (L.pack locus) (readInt length) (L.pack moleculeType) (liftM L.pack circular) (liftM L.pack division) (L.pack creationDate) (L.pack definition) (L.pack accession) (L.pack version) (L.pack geneIdentifier) (liftM L.pack dblink) (L.pack keywords) (L.pack source)  (L.pack organism) references (liftM L.pack comment) features contig (origintoSeqData origin) 
 
 -- | Parse a feature
 genParserFeature :: GenParser Char st Feature
