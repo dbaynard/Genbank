@@ -6,8 +6,9 @@ module Bio.GenbankParser (
                       ) where
 
 import Bio.GenbankData
+import Bio.GenbankParser.Combinators
 import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Token
+import Text.ParserCombinators.Parsec.Token hiding (whiteSpace)
 import Text.ParserCombinators.Parsec.Language (emptyDef)    
 import Control.Monad
 import Data.List
@@ -24,26 +25,26 @@ genParserGenbank :: GenParser Char st Genbank
 genParserGenbank = do
   string "LOCUS"
   many1 space
-  locus <- many1 (noneOf " ")
+  locus <- many1 noWhiteSpace
   many1 space
-  length <- many1 (noneOf " ")
+  length <- many1 noWhiteSpace
   string " bp"
   many1 space
-  moleculeType <- many1 (noneOf " ")
+  moleculeType <- many1 noWhiteSpace
   many1 space
   circular <- optionMaybe (try (choice [string "linear",string "circular",string "LINEAR",string "CIRCULAR"]))
   many space
-  division <-  many1 (noneOf " ")
+  division <-  many1 noWhiteSpace
   many1 space
-  creationDate <- many1 (noneOf "\n")
+  creationDate <- many1 noEol
   newline
   definition <- genParserField "DEFINITION" "ACCESSION"
   accession <- genParserField "ACCESSION" "VERSION"
   string "VERSION"
   many1 space
-  version <- many1 (noneOf " ")
+  version <- many1 noWhiteSpace
   many1 space
-  geneIdentifier <- many1 (noneOf "\n")
+  geneIdentifier <- many1 noEol
   newline
   dblink <- optionMaybe (try (genParserField "DBLINK" "KEYWORDS"))
   keywords <- genParserField "KEYWORDS" "SOURCE"
@@ -99,7 +100,7 @@ genParserSubFeature :: GenParser Char st SubFeature
 genParserSubFeature = do
   string "     "
   notFollowedBy (choice [string "gene", string "repeat_region", string "source"])
-  subFeatureType <- many1 (noneOf " ")
+  subFeatureType <- many1 noWhiteSpace
   many1 space
   subFeatureCoordinates <- choice [genParserCoordinatesSet "join", genParserCoordinatesSet "order"]
   attibutes <- many (try genParserAttributes)
@@ -126,7 +127,7 @@ genParserFlagAttribute = do
   many1 space
   string "/"
   notFollowedBy (string "translation")
-  flagType <- many1 (noneOf "\n")
+  flagType <- many1 noEol
   newline
   return $ Flag (L.pack flagType)
 
@@ -149,9 +150,9 @@ genParserField fieldStart fieldEnd = do
 genParserOriginSequence :: GenParser Char st String
 genParserOriginSequence = do
   many1 space
-  many1 (noneOf " ")
+  many1 noWhiteSpace
   space
-  originSequence <- many1 (noneOf "\n")
+  originSequence <- many1 noEol
   newline
   return originSequence
  
@@ -159,9 +160,9 @@ genParserOriginSequence = do
 genParserOriginSlice :: GenParser Char st OriginSlice
 genParserOriginSlice = do
   many1 space
-  originIndex <- many1 (noneOf " ")
+  originIndex <- many1 noWhiteSpace
   space
-  originSequence <- many1 (noneOf "\n")
+  originSequence <- many1 noEol
   newline
   return $ OriginSlice (readInt originIndex) originSequence
 
@@ -336,7 +337,7 @@ parseIntField :: String -> GenParser Char st Int
 parseIntField fieldname = do
   many1 space
   string ("/" ++ fieldname ++ "=")
-  int <- many1 (noneOf "\n")
+  int <- many1 noEol
   newline
   return (readInt int)
 
