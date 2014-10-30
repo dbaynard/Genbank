@@ -2,9 +2,12 @@
 --   For more information on genbank consult: <http://www.ncbi.nlm.nih.gov/genbank/>
 --   Genbank record sample: <http://www.ncbi.nlm.nih.gov/Sitemap/samplerecord.html>
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Bio.GenbankData where
 import Bio.Core.Sequence
 import qualified Data.ByteString.Lazy.Char8 as L
+import Data.Default
 --------------------------------------------------
 --Generic parser types
 
@@ -33,6 +36,32 @@ data Genbank = Genbank
     origin :: SeqData
   }
   deriving (Show, Eq)
+
+-- | Default implementation of Genbank
+-- TODO Convert to monoid?
+instance Default Genbank where
+    def = Genbank {
+                    locus = ""
+                  , genbankLength = 0
+                  -- DNA/RNA/Protein
+                  , moleculeType = ""
+                  , circular = Nothing
+                  , division = Nothing
+                  , creationDate = ""
+                  , definition = ""
+                  , accession = ""
+                  , version = ""
+                  , geneIdentifier = ""
+                  , dblink = Nothing
+                  , keywords = ""
+                  , source = ""
+                  , organism = ""
+                  , references = []
+                  , comment = Nothing
+                  , features = []
+                  , contig = Nothing
+                  , origin = SeqData ""
+                  }
 
 -- | Genbank Feature - e.g gene, repeat region
 data Feature = Feature {
