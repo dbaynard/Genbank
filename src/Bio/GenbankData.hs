@@ -8,6 +8,7 @@ module Bio.GenbankData where
 import Bio.Core.Sequence
 import qualified Data.ByteString.Lazy.Char8 as L
 import Data.Default
+import Data.Monoid
 --------------------------------------------------
 --Generic parser types
 
@@ -15,7 +16,7 @@ import Data.Default
 data Genbank = Genbank
   {
     locus :: L.ByteString,
-    genbankLength :: Int,
+    genbankLength :: Sum Int,
     -- DNA/RNA/Protein
     moleculeType :: L.ByteString,
     circular :: Maybe L.ByteString,
@@ -38,30 +39,53 @@ data Genbank = Genbank
   deriving (Show, Eq)
 
 -- | Default implementation of Genbank
--- TODO Convert to monoid?
 instance Default Genbank where
     def = Genbank {
-                    locus = ""
-                  , genbankLength = 0
-                  -- DNA/RNA/Protein
-                  , moleculeType = ""
-                  , circular = Nothing
-                  , division = Nothing
-                  , creationDate = ""
-                  , definition = ""
-                  , accession = ""
-                  , version = ""
-                  , geneIdentifier = ""
-                  , dblink = Nothing
-                  , keywords = ""
-                  , source = ""
-                  , organism = ""
-                  , references = []
-                  , comment = Nothing
-                  , features = []
-                  , contig = Nothing
-                  , origin = SeqData ""
+                    locus = mempty
+                  , genbankLength = mempty
+                  , moleculeType = mempty
+                  , circular = mempty
+                  , division = mempty
+                  , creationDate = mempty
+                  , definition = mempty
+                  , accession = mempty
+                  , version = mempty
+                  , geneIdentifier = mempty
+                  , dblink = mempty
+                  , keywords = mempty
+                  , source = mempty
+                  , organism = mempty
+                  , references = mempty
+                  , comment = mempty
+                  , features = mempty
+                  , contig = mempty
+                  , origin = mempty
                   }
+
+instance Monoid Genbank where
+    mempty = def
+    x `mappend` y = Genbank {
+                    locus = locus x <> locus y
+                  , genbankLength = genbankLength x <> genbankLength y
+                  , moleculeType = moleculeType x <> moleculeType y
+                  , circular = circular x <> circular y
+                  , division = division x <> division y
+                  , creationDate = creationDate x <> creationDate y
+                  , definition = definition x <> definition y
+                  , accession = accession x <> accession y
+                  , version = version x <> version y
+                  , geneIdentifier = geneIdentifier x <> geneIdentifier y
+                  , dblink = dblink x <> dblink y
+                  , keywords = keywords x <> keywords y
+                  , source = source x <> source y
+                  , organism = organism x <> organism y
+                  , references = references x <> references y
+                  , comment = comment x <> comment y
+                  , features = features x <> features y
+                  , contig = contig x <> contig y
+                  , origin = origin x <> origin y
+                  }
+
 
 -- | Genbank Feature - e.g gene, repeat region
 data Feature = Feature {

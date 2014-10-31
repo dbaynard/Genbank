@@ -13,6 +13,7 @@ import Text.ParserCombinators.Parsec.Language (emptyDef)
 import Control.Monad
 import Data.List
 import Data.List.Split (splitOn)
+import Data.Monoid
 import Data.Maybe
 import Bio.Core.Sequence
 import qualified Data.ByteString.Lazy.Char8 as L
@@ -64,7 +65,7 @@ genParserGenbank = do
   origin <- many1 genParserOriginSequence
   string "//"
   newline
-  return $ Genbank (L.pack locus) (readInt length) (L.pack moleculeType) (liftM L.pack circular) (liftM L.pack division) (L.pack creationDate) (L.pack definition) (L.pack accession) (L.pack version) (L.pack geneIdentifier) (liftM L.pack dblink) (L.pack keywords) (L.pack source)  (L.pack organism) references (liftM L.pack comment) features contig (origintoSeqData origin) 
+  return $ Genbank (L.pack locus) (Sum $ readInt length) (L.pack moleculeType) (liftM L.pack circular) (liftM L.pack division) (L.pack creationDate) (L.pack definition) (L.pack accession) (L.pack version) (L.pack geneIdentifier) (liftM L.pack dblink) (L.pack keywords) (L.pack source)  (L.pack organism) references (liftM L.pack comment) features contig (origintoSeqData origin) 
 
 -- | Parse a feature
 genParserFeature :: GenParser Char st Feature
