@@ -64,7 +64,27 @@ genParserGenbank = do
   origin <- many1 genParserOriginSequence
   string "//"
   newline
-  return $ Genbank (L.pack locus) (readInt length) (L.pack moleculeType) (liftM L.pack circular) (liftM L.pack division) (L.pack creationDate) (L.pack definition) (L.pack accession) (L.pack version) (L.pack geneIdentifier) (liftM L.pack dblink) (L.pack keywords) (L.pack source)  (L.pack organism) references (liftM L.pack comment) features contig (origintoSeqData origin) 
+  return Genbank { locus = L.pack locus
+               , genbankLength = readInt length
+               , moleculeType = L.pack moleculeType
+               , circular = liftM L.pack circular
+               , division = liftM L.pack division
+               , creationDate = L.pack creationDate
+               , definition = L.pack definition
+               , accession = L.pack accession
+               , version = L.pack version
+               , geneIdentifier = L.pack geneIdentifier
+               , dblink = liftM L.pack dblink
+               , keywords = L.pack keywords
+               , source = L.pack source
+               , organism = L.pack organism
+               , references = references
+               , comment = liftM L.pack comment
+               , features = features
+               , contig = contig
+               , origin = origintoSeqData origin
+               }
+
 
 -- | Parse a feature
 genParserFeature :: GenParser Char st Feature
