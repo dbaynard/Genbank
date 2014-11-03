@@ -18,6 +18,12 @@ import Bio.Core.Sequence
 import qualified Data.ByteString.Lazy.Char8 as L
 
 --------------------------------------------------
+--Helper functions:
+
+-- | Compose functions of multiple parameters
+(...) = (.).(.)
+infixr 8 ...
+
 --Parsing functions:
 
 -- | Parse the input as Genbank datatype
@@ -32,7 +38,7 @@ genParserGenbank = do
   spaces1
   moleculeType <- many1 noWhiteSpace
   spaces1
-  circular <- optionMaybe (try (choice [string "linear",string "circular",string "LINEAR",string "CIRCULAR"]))
+  circular <- optionMaybe . try . choice . fmap string $ ["linear", "circular", "LINEAR", "CIRCULAR"]
   spaces
   division <- optionMaybe . choice . fmap (try . string) $ ["PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN", "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"]
   spaces
@@ -46,18 +52,18 @@ genParserGenbank = do
   spaces1
   geneIdentifier <- many1 noEol
   newline
-  dblink <- optionMaybe (try (genParserField "DBLINK" "KEYWORDS"))
-  keywords <- optionMaybe (try (genParserField "KEYWORDS" "SOURCE"))
+  dblink <- (optionMaybe . try ... genParserField) "DBLINK" "KEYWORDS"
+  keywords <- (optionMaybe . try ... genParserField) "KEYWORDS" "SOURCE"
   source <- genParserField "SOURCE" "ORGANISM"
   organism <- genParserField "ORGANISM" "REFERENCE"
   references <- many1 genParserReference
-  comment <- optionMaybe (try (genParserField "COMMENT" "FEATURES"))
+  comment <- (optionMaybe . try ... genParserField) "COMMENT" "FEATURES"
   string "FEATURES"
   spaces1
   string "Location/Qualifiers"
   newline
   features <- many genParserFeature
-  contig <- optionMaybe (try (genParserField "CONTIG" "ORIGIN"))
+  contig <- (optionMaybe . try ... genParserField) "CONTIG" "ORIGIN"
   string "ORIGIN"
   many (string " ")
   newline
@@ -124,7 +130,7 @@ genParserSubFeature = do
   spaces1
   subFeatureCoordinates <- choice [genParserCoordinatesSet "join", genParserCoordinatesSet "order"]
   attibutes <- many (try genParserAttributes)
-  subFeatureTranslation <- optionMaybe (try (parseStringField "translation"))
+  subFeatureTranslation <- optionMaybe . try . parseStringField $ "translation"
   return $ SubFeature (L.pack subFeatureType) subFeatureCoordinates attibutes (translationtoSeqData subFeatureTranslation)
 
 -- | Parse GO attribute 
@@ -195,11 +201,11 @@ genParserReference = do
   many (string " ")
   optional (try (string "(bases"))
   many (string " ")
-  baseFrom <- optionMaybe (try (many1 digit))
+  baseFrom <- optionMaybe . try . many1 $ digit
   many (string " ")
   optional (try (string "to"))
   many (string " ")
-  baseTo  <- optionMaybe (try (many1 digit))
+  baseTo  <- optionMaybe . try . many1 $ digit
   optional (try (string ")"))
   newline
   spaces1
@@ -246,12 +252,12 @@ genParserForwardPrefix prefix = do
 
 genParserForwardPrefixCoordinates :: GenParser Char st Coordinates
 genParserForwardPrefixCoordinates = do
-  coordinateFromEqualitySymbol <- optionMaybe (try (oneOf "><"))  
+  coordinateFromEqualitySymbol <- optionMaybe . try . oneOf $ "><"  
   coordinateFrom <- many1 digit
   optional (oneOf "><")
   string "."
   string "."
-  coordinateToEqualitySymbol <- optionMaybe (try (oneOf "><"))
+  coordinateToEqualitySymbol <- optionMaybe . try . oneOf $ "><"
   coordinateTo <- many1 digit
   optional (choice [try (string ",\n"),try (string ",")])
   optional (many1 (string " "))
@@ -270,12 +276,12 @@ genParserComplementPrefix prefix = do
 
 genParserForwardCoordinates :: GenParser Char st Coordinates
 genParserForwardCoordinates = do
-  coordinateFromEqualitySymbol <- optionMaybe (try (oneOf "><"))  
+  coordinateFromEqualitySymbol <- optionMaybe . try . oneOf $ "><"  
   coordinateFrom <- many1 digit
   optional (oneOf "><")
   string "."
   string "."
-  coordinateToEqualitySymbol <- optionMaybe (try (oneOf "><"))
+  coordinateToEqualitySymbol <- optionMaybe . try . oneOf $ "><"
   coordinateTo <- many1 digit
   newline
   return $ Coordinates (readInt coordinateFrom) coordinateFromEqualitySymbol (readInt coordinateTo) coordinateToEqualitySymbol False
@@ -283,12 +289,12 @@ genParserForwardCoordinates = do
 genParserComplementCoordinates :: GenParser Char st Coordinates
 genParserComplementCoordinates = do
   string "complement("
-  coordinateFromEqualitySymbol <- optionMaybe (try (oneOf "><")) 
+  coordinateFromEqualitySymbol <- optionMaybe . try . oneOf $ "><" 
   coordinateFrom <- many1 digit
   optional (oneOf "><")
   string "."
   string "."
-  coordinateToEqualitySymbol <- optionMaybe (try (oneOf "><"))
+  coordinateToEqualitySymbol <- optionMaybe . try . oneOf $ "><"
   coordinateTo <- many1 digit
   string ")"
   newline
