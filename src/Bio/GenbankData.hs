@@ -26,7 +26,7 @@ data Genbank = Genbank
     version :: L.ByteString,
     geneIdentifier :: L.ByteString,
     dblink :: Maybe L.ByteString,
-    keywords :: L.ByteString,
+    keywords :: Maybe L.ByteString,
     source :: L.ByteString,
     organism :: L.ByteString,
     references :: [Reference],
@@ -53,7 +53,7 @@ instance Default Genbank where
                   , version = ""
                   , geneIdentifier = ""
                   , dblink = Nothing
-                  , keywords = ""
+                  , keywords = Nothing
                   , source = ""
                   , organism = ""
                   , references = []

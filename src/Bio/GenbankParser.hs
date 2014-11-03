@@ -47,7 +47,7 @@ genParserGenbank = do
   geneIdentifier <- many1 noEol
   newline
   dblink <- optionMaybe (try (genParserField "DBLINK" "KEYWORDS"))
-  keywords <- genParserField "KEYWORDS" "SOURCE"
+  keywords <- optionMaybe (try (genParserField "KEYWORDS" "SOURCE"))
   source <- genParserField "SOURCE" "ORGANISM"
   organism <- genParserField "ORGANISM" "REFERENCE"
   references <- many1 genParserReference
@@ -75,7 +75,7 @@ genParserGenbank = do
                , version = L.pack version
                , geneIdentifier = L.pack geneIdentifier
                , dblink = liftM L.pack dblink
-               , keywords = L.pack keywords
+               , keywords = liftM L.pack keywords
                , source = L.pack source
                , organism = L.pack organism
                , references = references
