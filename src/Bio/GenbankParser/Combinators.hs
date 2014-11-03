@@ -4,12 +4,15 @@ module Bio.GenbankParser.Combinators (
   , notChar
   , noEol
   , noWhiteSpace
+  , space
+  , spaces
+  , spaces1
 )	where
 
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Token hiding (whiteSpace)
-import Text.ParserCombinators.Parsec.Language (emptyDef)    
-import Control.Applicative hiding ((<|>),(<?>))
+import Text.ParserCombinators.Parsec hiding (space, spaces)
+{-import Text.ParserCombinators.Parsec.Token hiding (whiteSpace)-}
+{-import Text.ParserCombinators.Parsec.Language (emptyDef)    -}
+import Control.Applicative hiding ((<|>),(<?>), many)
 
 eol = try (string "\n")
     <|> try (string "\r")
@@ -20,6 +23,13 @@ whiteSpace = string " "
             <|> string "\t"
             <|> eol
             <?> "Whitespace"
+
+space :: GenParser Char st Char
+space = oneOf "         "
+
+spaces = many space
+
+spaces1 = many1 space
 
 notChar x = notFollowedBy x *> anyChar
 

@@ -7,9 +7,9 @@ module Bio.GenbankParser (
 
 import Bio.GenbankData
 import Bio.GenbankParser.Combinators
-import Text.ParserCombinators.Parsec
-import Text.ParserCombinators.Parsec.Token hiding (whiteSpace)
-import Text.ParserCombinators.Parsec.Language (emptyDef)    
+import Text.ParserCombinators.Parsec hiding (space, spaces)
+{-import Text.ParserCombinators.Parsec.Token hiding (whiteSpace)-}
+{-import Text.ParserCombinators.Parsec.Language (emptyDef)    -}
 import Control.Monad
 import Data.List
 import Data.List.Split (splitOn)
@@ -24,26 +24,26 @@ import qualified Data.ByteString.Lazy.Char8 as L
 genParserGenbank :: GenParser Char st Genbank
 genParserGenbank = do
   string "LOCUS"
-  many1 space
+  spaces1
   locus <- many1 noWhiteSpace
-  many1 space
+  spaces1
   length <- many1 noWhiteSpace
   string " bp"
-  many1 space
+  spaces1
   moleculeType <- many1 noWhiteSpace
-  many1 space
+  spaces1
   circular <- optionMaybe (try (choice [string "linear",string "circular",string "LINEAR",string "CIRCULAR"]))
-  many space
+  spaces
   division <- optionMaybe . choice . fmap (try . string) $ ["PRI", "ROD", "MAM", "VRT", "INV", "PLN", "BCT", "VRL", "PHG", "SYN", "UNA", "EST", "PAT", "STS", "GSS", "HTG", "HTC", "ENV"]
-  many space
+  spaces
   creationDate <- many1 noEol
   newline
   definition <- genParserField "DEFINITION" "ACCESSION"
   accession <- genParserField "ACCESSION" "VERSION"
   string "VERSION"
-  many1 space
-  version <- many1 noWhiteSpace
-  many1 space
+  spaces1
+  version <- many noWhiteSpace
+  spaces1
   geneIdentifier <- many1 noEol
   newline
   dblink <- optionMaybe (try (genParserField "DBLINK" "KEYWORDS"))
@@ -53,7 +53,7 @@ genParserGenbank = do
   references <- many1 genParserReference
   comment <- optionMaybe (try (genParserField "COMMENT" "FEATURES"))
   string "FEATURES"
-  many1 space
+  spaces1
   string "Location/Qualifiers"
   newline
   features <- many genParserFeature
@@ -91,7 +91,7 @@ genParserFeature :: GenParser Char st Feature
 genParserFeature = do
   string "     "
   featureType <- choice [try (string "gene") , try (string "repeat_region"), try (string "source")]
-  many1 space
+  spaces1
   genericFeatureCoordinates <- choice [genParserCoordinatesSet "join", genParserCoordinatesSet "order"]
   attibutes <- many (try genParserAttributes)
   subFeatures <- many (try genParserSubFeature) 
@@ -105,7 +105,7 @@ genParserAttributes = choice [try genParserAttribute, try genParseGOattribute, t
 -- | Parse a attribute, consisting of attribute designation and value
 genParserAttribute :: GenParser Char st Attribute
 genParserAttribute = do
-  many1 space
+  spaces1
   string "/"
   notFollowedBy (string "translation")
   fieldName <- many1 (noneOf "=")
@@ -121,7 +121,7 @@ genParserSubFeature = do
   string "     "
   notFollowedBy (choice [string "gene", string "repeat_region", string "source"])
   subFeatureType <- many1 noWhiteSpace
-  many1 space
+  spaces1
   subFeatureCoordinates <- choice [genParserCoordinatesSet "join", genParserCoordinatesSet "order"]
   attibutes <- many (try genParserAttributes)
   subFeatureTranslation <- optionMaybe (try (parseStringField "translation"))
@@ -130,7 +130,7 @@ genParserSubFeature = do
 -- | Parse GO attribute 
 genParseGOattribute :: GenParser Char st Attribute
 genParseGOattribute = do
-  many1 space
+  spaces1
   string "/GO_"
   goType <- many1 (noneOf "=")
   string "=\""
@@ -144,7 +144,7 @@ genParseGOattribute = do
 -- | Parse flag attribute
 genParserFlagAttribute :: GenParser Char st Attribute
 genParserFlagAttribute = do
-  many1 space
+  spaces1
   string "/"
   notFollowedBy (string "translation")
   flagType <- many1 noEol
@@ -163,13 +163,13 @@ readGenbank  = parseFromFile genParserGenbank
 genParserField :: String -> String -> GenParser Char st String
 genParserField fieldStart fieldEnd = do 
   string fieldStart
-  many1 space
+  spaces1
   manyTill anyChar (try (lookAhead (string fieldEnd)))
                  
 -- | Parse the input as OriginSlice datatype
 genParserOriginSequence :: GenParser Char st String
 genParserOriginSequence = do
-  many1 space
+  spaces1
   many1 noWhiteSpace
   space
   originSequence <- many1 noEol
@@ -179,7 +179,7 @@ genParserOriginSequence = do
 -- | Parse the input as OriginSlice datatype
 genParserOriginSlice :: GenParser Char st OriginSlice
 genParserOriginSlice = do
-  many1 space
+  spaces1
   originIndex <- many1 noWhiteSpace
   space
   originSequence <- many1 noEol
@@ -190,7 +190,7 @@ genParserOriginSlice = do
 genParserReference :: GenParser Char st Reference
 genParserReference = do
   string "REFERENCE"
-  many1 space
+  spaces1
   index <- many1 digit
   many (string " ")
   optional (try (string "(bases"))
@@ -202,7 +202,7 @@ genParserReference = do
   baseTo  <- optionMaybe (try (many1 digit))
   optional (try (string ")"))
   newline
-  many1 space
+  spaces1
   authors <- choice [genParserField "AUTHORS" "TITLE", genParserField "CONSRTM" "TITLE"]
   title <- genParserField "TITLE" "JOURNAL"
   journal <- choice [try (genParserField "JOURNAL" "REFERENCE"), try (genParserField "JOURNAL" "COMMENT"), try (genParserField "JOURNAL" "FEATURES")]
@@ -210,7 +210,7 @@ genParserReference = do
 
 parseFlag :: String -> GenParser Char st Char
 parseFlag flagString = do
-  many1 space
+  spaces1
   flag <- string ('/' : flagString)
   newline
 
@@ -301,7 +301,7 @@ setComplement complementBool coordinates = coordinatesWithComplement
 
 genParseGOterm :: GenParser Char st GOterm
 genParseGOterm = do
-  many1 space
+  spaces1
   string "/GO_"
   goType <- many1 (noneOf "=")
   string "=\""
@@ -314,7 +314,7 @@ genParseGOterm = do
 
 genParseDbXRef :: GenParser Char st DbXRef
 genParseDbXRef = do
-  many1 space
+  spaces1
   string "/db_xref=\""
   db <- many1 (noneOf ":")
   string ":"
@@ -337,7 +337,7 @@ readChar = read
 
 parseStringBracketField :: String -> GenParser Char st String
 parseStringBracketField fieldname = do
-  many1 space
+  spaces1
   string ("/" ++ fieldname ++ "=(")
   stringBracketField <- manyTill anyChar (try (string ")\n"))
   return stringBracketField
@@ -345,7 +345,7 @@ parseStringBracketField fieldname = do
 -- | Parse a field containing a String         
 parseStringField :: String -> GenParser Char st String
 parseStringField fieldname = do
-  many1 space
+  spaces1
   string ("/" ++ fieldname ++ "=\"")
   stringField <- many1( noneOf "\"")
   string "\""
@@ -355,7 +355,7 @@ parseStringField fieldname = do
 -- | Parse a field containing a Int          
 parseIntField :: String -> GenParser Char st Int
 parseIntField fieldname = do
-  many1 space
+  spaces1
   string ("/" ++ fieldname ++ "=")
   int <- many1 noEol
   newline
