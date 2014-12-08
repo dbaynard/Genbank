@@ -7,7 +7,9 @@ module Bio.GenbankParser (
 
 import Bio.GenbankData
 import Bio.GenbankParser.Combinators
-import Text.ParserCombinators.Parsec hiding (space, spaces)
+import Text.Parsec hiding (space, spaces)
+import Text.Parsec.Text
+import qualified Text.Parsec.ByteString.Lazy as P
 {-import Text.ParserCombinators.Parsec.Token hiding (whiteSpace)-}
 {-import Text.ParserCombinators.Parsec.Language (emptyDef)    -}
 import Control.Monad
@@ -27,7 +29,7 @@ infixr 8 ...
 --Parsing functions:
 
 -- | Parse the input as Genbank datatype
-genParserGenbank :: GenParser Char st Genbank
+genParserGenbank :: GenParser st Genbank
 genParserGenbank = do
   string "LOCUS"
   spaces1
@@ -93,7 +95,7 @@ genParserGenbank = do
 
 
 -- | Parse a feature
-genParserFeature :: GenParser Char st Feature
+genParserFeature :: GenParser st Feature
 genParserFeature = do
   string "     "
   featureType <- choice [try (string "gene") , try (string "repeat_region"), try (string "source")]
@@ -105,11 +107,11 @@ genParserFeature = do
   return $ Feature (L.pack featureType) genericFeatureCoordinates attibutes subFeatures
 
 -- | Parse a attribute, a GO attribute or a Flag
-genParserAttributes :: GenParser Char st Attribute
+genParserAttributes :: GenParser st Attribute
 genParserAttributes = choice [try genParserAttribute, try genParseGOattribute, try genParserFlagAttribute]
 
 -- | Parse a attribute, consisting of attribute designation and value
-genParserAttribute :: GenParser Char st Attribute
+genParserAttribute :: GenParser st Attribute
 genParserAttribute = do
   spaces1
   string "/"
@@ -122,7 +124,7 @@ genParserAttribute = do
   return $ Field (L.pack fieldName) (L.pack stringField)
 
 -- | Parse a Subfeature
-genParserSubFeature :: GenParser Char st SubFeature
+genParserSubFeature :: GenParser st SubFeature
 genParserSubFeature = do
   string "     "
   notFollowedBy (choice [string "gene", string "repeat_region", string "source"])
@@ -134,7 +136,7 @@ genParserSubFeature = do
   return $ SubFeature (L.pack subFeatureType) subFeatureCoordinates attibutes (translationtoSeqData subFeatureTranslation)
 
 -- | Parse GO attribute 
-genParseGOattribute :: GenParser Char st Attribute
+genParseGOattribute :: GenParser st Attribute
 genParseGOattribute = do
   spaces1
   string "/GO_"
@@ -148,7 +150,7 @@ genParseGOattribute = do
   return $ GOattribute (L.pack goType) (L.pack goId) (L.pack goName)
 
 -- | Parse flag attribute
-genParserFlagAttribute :: GenParser Char st Attribute
+genParserFlagAttribute :: GenParser st Attribute
 genParserFlagAttribute = do
   spaces1
   string "/"
@@ -163,17 +165,17 @@ parseGenbank = parse genParserGenbank "genParserGenbank"
 
 -- | Read the file as Genbank datatype                     
 readGenbank :: String -> IO (Either ParseError Genbank)          
-readGenbank  = parseFromFile genParserGenbank 
+readGenbank  = P.parseFromFile genParserGenbank 
 
 -- | Parse a Field 
-genParserField :: String -> String -> GenParser Char st String
+genParserField :: String -> String -> GenParser st String
 genParserField fieldStart fieldEnd = do 
   string fieldStart
   spaces1
   manyTill anyChar (try (lookAhead (string fieldEnd)))
                  
 -- | Parse the input as OriginSlice datatype
-genParserOriginSequence :: GenParser Char st String
+genParserOriginSequence :: GenParser st String
 genParserOriginSequence = do
   spaces1
   many1 noWhiteSpace
@@ -183,7 +185,7 @@ genParserOriginSequence = do
   return originSequence
  
 -- | Parse the input as OriginSlice datatype
-genParserOriginSlice :: GenParser Char st OriginSlice
+genParserOriginSlice :: GenParser st OriginSlice
 genParserOriginSlice = do
   spaces1
   originIndex <- many1 noWhiteSpace
@@ -193,7 +195,7 @@ genParserOriginSlice = do
   return $ OriginSlice (readInt originIndex) originSequence
 
 -- | Parse the input as Reference datatype
-genParserReference :: GenParser Char st Reference
+genParserReference :: GenParser st Reference
 genParserReference = do
   string "REFERENCE"
   spaces1
@@ -214,7 +216,7 @@ genParserReference = do
   journal <- choice [try (genParserField "JOURNAL" "REFERENCE"), try (genParserField "JOURNAL" "COMMENT"), try (genParserField "JOURNAL" "FEATURES")]
   return $ Reference (readInt index) (liftM readInt baseFrom) (liftM readInt baseTo) authors title journal Nothing Nothing --pubmedId remark 
 
-parseFlag :: String -> GenParser Char st Char
+parseFlag :: String -> GenParser st Char
 parseFlag flagString = do
   spaces1
   flag <- string ('/' : flagString)
@@ -232,25 +234,25 @@ translationtoSeqData translationInput
   | isJust translationInput = Just (SeqData (L.pack (filter (\aminoacid -> (aminoacid /=  '\n') && (aminoacid /=  ' ') ) (fromJust translationInput))))
   | otherwise = Nothing 
 
-genParserCoordinates :: GenParser Char st Coordinates
+genParserCoordinates :: GenParser st Coordinates
 genParserCoordinates = do
   coordinates <- choice [try genParserForwardCoordinates, try genParserComplementCoordinates]
   return coordinates
 
-genParserCoordinatesSet :: String -> GenParser Char st CoordinateSet
+genParserCoordinatesSet :: String -> GenParser st CoordinateSet
 genParserCoordinatesSet prefix = do
   coordinates <- choice [try (many1 genParserForwardCoordinates), try (many1 genParserComplementCoordinates), try (genParserForwardPrefix prefix), try (genParserComplementPrefix prefix)]
   return $ CoordinateSet coordinates (Just prefix)
 
 -- | Parsing of coordinate lists with prefix e.g. order, join
-genParserForwardPrefix :: String -> GenParser Char st [Coordinates]
+genParserForwardPrefix :: String -> GenParser st [Coordinates]
 genParserForwardPrefix prefix = do
   string (prefix ++ "(")
   coordinates <- many1 genParserForwardPrefixCoordinates
   string ")"
   return coordinates
 
-genParserForwardPrefixCoordinates :: GenParser Char st Coordinates
+genParserForwardPrefixCoordinates :: GenParser st Coordinates
 genParserForwardPrefixCoordinates = do
   coordinateFromEqualitySymbol <- optionMaybe . try . oneOf $ "><"  
   coordinateFrom <- many1 digit
@@ -264,7 +266,7 @@ genParserForwardPrefixCoordinates = do
   return $ Coordinates (readInt coordinateFrom) coordinateFromEqualitySymbol (readInt coordinateTo) coordinateToEqualitySymbol True
 
 -- | Parseing of coordinate complement coordinate lists with prefix
-genParserComplementPrefix :: String -> GenParser Char st [Coordinates]
+genParserComplementPrefix :: String -> GenParser st [Coordinates]
 genParserComplementPrefix prefix = do
   string "complement("
   string (prefix ++ "(")
@@ -274,7 +276,7 @@ genParserComplementPrefix prefix = do
   newline
   return (setComplement False coordinates)
 
-genParserForwardCoordinates :: GenParser Char st Coordinates
+genParserForwardCoordinates :: GenParser st Coordinates
 genParserForwardCoordinates = do
   coordinateFromEqualitySymbol <- optionMaybe . try . oneOf $ "><"  
   coordinateFrom <- many1 digit
@@ -286,7 +288,7 @@ genParserForwardCoordinates = do
   newline
   return $ Coordinates (readInt coordinateFrom) coordinateFromEqualitySymbol (readInt coordinateTo) coordinateToEqualitySymbol False
 
-genParserComplementCoordinates :: GenParser Char st Coordinates
+genParserComplementCoordinates :: GenParser st Coordinates
 genParserComplementCoordinates = do
   string "complement("
   coordinateFromEqualitySymbol <- optionMaybe . try . oneOf $ "><" 
@@ -305,7 +307,7 @@ setComplement complementBool coordinates = coordinatesWithComplement
   where updateCoordinate complementBool coordinate = coordinate { complement = complementBool }
         coordinatesWithComplement = map (updateCoordinate complementBool) coordinates
 
-genParseGOterm :: GenParser Char st GOterm
+genParseGOterm :: GenParser st GOterm
 genParseGOterm = do
   spaces1
   string "/GO_"
@@ -318,7 +320,7 @@ genParseGOterm = do
   newline
   return $ GOterm goType goId goName
 
-genParseDbXRef :: GenParser Char st DbXRef
+genParseDbXRef :: GenParser st DbXRef
 genParseDbXRef = do
   spaces1
   string "/db_xref=\""
@@ -341,7 +343,7 @@ readInt = read
 readChar :: String -> Char
 readChar = read
 
-parseStringBracketField :: String -> GenParser Char st String
+parseStringBracketField :: String -> GenParser st String
 parseStringBracketField fieldname = do
   spaces1
   string ("/" ++ fieldname ++ "=(")
@@ -349,7 +351,7 @@ parseStringBracketField fieldname = do
   return stringBracketField
   
 -- | Parse a field containing a String         
-parseStringField :: String -> GenParser Char st String
+parseStringField :: String -> GenParser st String
 parseStringField fieldname = do
   spaces1
   string ("/" ++ fieldname ++ "=\"")
@@ -359,7 +361,7 @@ parseStringField fieldname = do
   return stringField
 
 -- | Parse a field containing a Int          
-parseIntField :: String -> GenParser Char st Int
+parseIntField :: String -> GenParser st Int
 parseIntField fieldname = do
   spaces1
   string ("/" ++ fieldname ++ "=")
