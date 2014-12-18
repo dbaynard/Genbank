@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Test (
 )	where
 
 import Text.Parsec.Prim (runP)
 import Data.Text.Lazy ()
 {-import qualified Data.Text.Lazy as DT (unwords)-}
+import qualified Data.ByteString.Lazy.Char8 as B (pack)
 import qualified Data.Text.Lazy.IO as DTI
 import Text.Parsec hiding (space, spaces)
 import qualified Text.Parsec.Text.Lazy as T
@@ -12,7 +14,16 @@ import qualified Text.Parsec.ByteString.Lazy as P ()
 import Control.Applicative hiding ((<|>), many, optional)
 {-import Text.Parsec.Indent-}
 import Data.Monoid
-import Control.Monad
+import Control.Monad hiding (sequence)
+import Data.Traversable (sequence, sequenceA)
+
+import Control.Lens hiding (locus)
+
+import Bio.GenbankData
+
+import Language.Haskell.TH
+makeLensesWith ?? ''Genbank $ lensRules
+    & lensField .~ \_ _ name -> [TopName (mkName $ nameBase name ++ "L")]
 
 -- | @parseFromFile p filePath@ runs a lazy bytestring parser @p@ on the
 -- input read from @filePath@ using 'ByteString.Lazy.Char8.readFile'. Returns either a 'ParseError'
@@ -35,6 +46,12 @@ parseFromFile p fname
  -    = do input <- DTI.readFile fname
  -         return (runParserT p () fname input)
  -}
+
+(~-~) :: (Applicative f) => ASetter s t a b -> f b -> s -> f t
+(~-~) = f
+    where
+        lens `f` parser = ( (lens .~) <$> parser <*> ) . pure
+infixr 5 ~-~
 
 space :: T.GenParser st Char
 space = oneOf "         "
@@ -69,7 +86,7 @@ subItemJoin = try $ endOfLine *> smallIndent
 
 featureJoin = try $ endOfLine *> middlIndent
 
-gLocusParser = do
+gLocusParser x = do
         string "LOCUS"
         spaces1
         locus <- many1 noWhiteSpace
@@ -85,9 +102,27 @@ gLocusParser = do
         spaces
         creationDate <- many1 noEol
         itemJoin
-        return (locus, length, moleculeType, circular, division, creationDate)
+        {-return (locus, length, moleculeType, circular, division, creationDate)-}
+        return $ x { locus = B.pack locus
+                   , genbankLength = read length
+                   , moleculeType = B.pack moleculeType
+                   , circular = B.pack <$> circular
+                   , division = B.pack <$> division
+                   , creationDate = B.pack creationDate
+                   }
 
 gDefinitionParser = gSimpleAttribParser "DEFINITION"
+
+gDefinitionParser' modifier  = setter modifier `fmap` gSimpleAttribParser "DEFINITION"
+
+setter modifier item record = record { definition = modifier B.pack item }
+{-
+ -gDefinitionParser' x = setter definition id x `fmap` gSimpleAttribParser "DEFINITION"
+ -
+ -setter item modifier record = record { definition = modifier B.pack item }
+ -}
+
+-- gLocusParser defGenbank <**> fmap (\y x -> x { definition = B.pack y } ) gDefinitionParser
 
 gAccessionParser = gSimpleAttribParser "ACCESSION"
 
@@ -182,4 +217,4 @@ gOriginParser = join <$> nucline
             nucLetters = "acgnturykmswbdhvACGNTURYKMSWBDHV"
 
 {-(\x -> parseFromFile x "sample.gb") -}
-testParse = (,,,) <$> gLocusParser <*> many (choice gAttribParsers) <*> gFeatureTableParser <*> gOriginParser
+testParse = (,,,) <$> gLocusParser defGenbank <*> many (choice gAttribParsers) <*> gFeatureTableParser <*> gOriginParser
