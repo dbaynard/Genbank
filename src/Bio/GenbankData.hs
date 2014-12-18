@@ -8,6 +8,12 @@ module Bio.GenbankData where
 import Bio.Core.Sequence
 import qualified Data.ByteString.Lazy.Char8 as L
 import Data.Default
+
+instance Default L.ByteString where
+    def = ""
+
+instance Default SeqData where
+    def = SeqData def
 --------------------------------------------------
 --Generic parser types
 
@@ -41,27 +47,30 @@ data Genbank = Genbank
 -- TODO Convert to monoid?
 instance Default Genbank where
     def = Genbank {
-                    locus = ""
-                  , genbankLength = 0
+                    locus = def
+                  , genbankLength = def
                   -- DNA/RNA/Protein
-                  , moleculeType = ""
-                  , circular = Nothing
-                  , division = Nothing
-                  , creationDate = ""
-                  , definition = ""
-                  , accession = ""
-                  , version = ""
-                  , geneIdentifier = ""
-                  , dblink = Nothing
-                  , keywords = Nothing
-                  , source = ""
-                  , organism = ""
-                  , references = []
-                  , comment = Nothing
-                  , features = []
-                  , contig = Nothing
-                  , origin = SeqData ""
+                  , moleculeType = def
+                  , circular = def
+                  , division = def
+                  , creationDate = def
+                  , definition = def
+                  , accession = def
+                  , version = def
+                  , geneIdentifier = def
+                  , dblink = def
+                  , keywords = def
+                  , source = def
+                  , organism = def
+                  , references = def
+                  , comment = def
+                  , features = def
+                  , contig = def
+                  , origin = def
                   }
+
+defGenbank :: Genbank
+defGenbank = def
 
 -- | Genbank Feature - e.g gene, repeat region
 data Feature = Feature {
